@@ -1,9 +1,15 @@
 exports.handler = async (event) => {
     try {
-        // מקבל את מה שהמשתמש הקיש בטלפון
-        const data = event.queryStringParameters.data || "";
+        // ניסיון לקרוא נתונים מ-GET
+        let data = event.queryStringParameters ? event.queryStringParameters.data : "";
         
-        // מפת האותיות (T9) - איזה מקש שייך לאילו אותיות
+        // אם לא נמצא ב-GET, ננסה לקרוא מ-POST
+        if (!data && event.body) {
+            // ימות המשיח שולחים בפורמט שנקרא urlencoded
+            const bodyParams = new URLSearchParams(event.body);
+            data = bodyParams.get('data') || "";
+        }
+
         const keyMap = {
             '2': ['א', 'ב', 'ג'],
             '3': ['ד', 'ה', 'ו'],
@@ -15,11 +21,9 @@ exports.handler = async (event) => {
             '9': ['ש', 'ת']
         };
 
-        // רשימת ערים לדוגמה (בהמשך נחליף את זה בחיפוש אמיתי)
         const cities = ["בני ברק", "ביתר עילית", "בית שמש", "אלעד", "ירושלים", "צפת", "רחובות"];
 
-        // אם המשתמש עוד לא הקיש כלום
-        if (!data) {
+        if (!data || data === "") {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -27,18 +31,17 @@ exports.handler = async (event) => {
             };
         }
 
-        const digit = data[0];
+        const digit = data.toString().trim().charAt(0);
         const possibleLetters = keyMap[digit];
 
         if (!possibleLetters) {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-המקש שהוקש אינו תקין. נא נסה שוב"
+                body: "read=t-המקש שהוקש אינו תקין, נא נסה שוב"
             };
         }
 
-        // סינון הערים שמתחילות באותיות המתאימות למקש
         const filteredCities = cities.filter(city => 
             possibleLetters.some(letter => city.startsWith(letter))
         );
@@ -47,14 +50,13 @@ exports.handler = async (event) => {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-לא נמצאו ערים מתאימות למקש זה"
+                body: "read=t-לא נמצאו ערים מתאימות למקש זה, נא נסה אות אחרת"
             };
         }
 
-        // בניית הודעה עם אפשרויות בחירה
-        let message = "לבחירת עיר: ";
+        let message = "לבחירת עיר, ";
         filteredCities.slice(0, 5).forEach((city, index) => {
-            message += `ל${city} הקש ${index + 1}. `;
+            message += `ל${city} הקש ${index + 1}, `;
         });
 
         return {
