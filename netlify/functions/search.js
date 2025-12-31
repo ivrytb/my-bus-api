@@ -2,17 +2,16 @@ const querystring = require('querystring');
 
 exports.handler = async (event) => {
     try {
-        // 1. חילוץ הנתונים - בודק גם ב-URL (GET) וגם ב-Body (POST)
         let params = event.queryStringParameters || {};
-        
         if (event.body) {
             const bodyParams = querystring.parse(event.body);
             params = { ...params, ...bodyParams };
         }
 
-        const cityKey = params.city_key || "";
-        
-        // 2. מפת המקשים
+        // חילוץ city_key וניקוי שלו מכל מה שאינו ספרה (כדי לטפל ב-"Digits-2")
+        let cityKey = params.city_key || "";
+        const digit = cityKey.toString().replace(/\D/g, '').charAt(0); 
+
         const keyMap = {
             '2': ['א', 'ב', 'ג'], '3': ['ד', 'ה', 'ו'], '4': ['ז', 'ח', 'ט'],
             '5': ['י', 'כ', 'ל'], '6': ['מ', 'נ'], '7': ['ס', 'ע', 'פ'],
@@ -21,12 +20,7 @@ exports.handler = async (event) => {
 
         const cities = ["בני ברק", "ביתר עילית", "בית שמש", "אלעד", "ירושלים", "צפת", "רחובות"];
 
-        // ניקוי הקלט (לוקח רק את הספרה הראשונה)
-        const digit = cityKey.toString().trim().charAt(0);
-
-        // 3. לוגיקת התגובה
         if (!digit || !keyMap[digit]) {
-            // אם הגענו לכאן, סימן שהשרת לא קיבל את המקש בצורה נכונה
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -40,19 +34,19 @@ exports.handler = async (event) => {
         );
 
         if (filteredCities.length === 0) {
+            // אם לא מצאנו, נשמיע למשתמש מה המערכת "הבינה" שהוא הקיש כדי שנוכל לדבג
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-לא נמצאו ערים מתאימות למקש זה, נא נסה שוב=city_key,no,1,1,7,Digits"
+                body: `read=t-לא נמצאו ערים לאות שהקשתם במקש ${digit}, נא נסה שוב=city_key,no,1,1,7,Digits`
             };
         }
 
         let cityList = "";
-        filteredCities.slice(0, 5).forEach((city, index) => {
+        filteredCities.forEach((city, index) => {
             cityList += `ל${city} הקש ${index + 1}, `;
         });
 
-        // החלק החשוב: שימוש ב-read לפי המסמך שלך
         return {
             statusCode: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
