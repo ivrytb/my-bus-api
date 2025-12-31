@@ -1,15 +1,8 @@
 exports.handler = async (event) => {
     try {
-        // ניסיון לקרוא נתונים מ-GET
-        let data = event.queryStringParameters ? event.queryStringParameters.data : "";
+        // ימות המשיח שולחים כעת את הפרמטר city_key כפי שהגדרנו ב-api_000
+        const cityKey = event.queryStringParameters.city_key || "";
         
-        // אם לא נמצא ב-GET, ננסה לקרוא מ-POST
-        if (!data && event.body) {
-            // ימות המשיח שולחים בפורמט שנקרא urlencoded
-            const bodyParams = new URLSearchParams(event.body);
-            data = bodyParams.get('data') || "";
-        }
-
         const keyMap = {
             '2': ['א', 'ב', 'ג'],
             '3': ['ד', 'ה', 'ו'],
@@ -23,15 +16,17 @@ exports.handler = async (event) => {
 
         const cities = ["בני ברק", "ביתר עילית", "בית שמש", "אלעד", "ירושלים", "צפת", "רחובות"];
 
-        if (!data || data === "") {
+        // ניקוי הקלט
+        const digit = cityKey.toString().trim().charAt(0);
+        
+        if (!digit) {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-נא הקש את המקש של האות הראשונה של עיר היעד"
+                body: "read=t-לא התקבלה הקשה, נא נסה שנית"
             };
         }
 
-        const digit = data.toString().trim().charAt(0);
         const possibleLetters = keyMap[digit];
 
         if (!possibleLetters) {
@@ -50,12 +45,12 @@ exports.handler = async (event) => {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-לא נמצאו ערים מתאימות למקש זה, נא נסה אות אחרת"
+                body: "read=t-לא נמצאו ערים מתאימות למקש זה"
             };
         }
 
         let message = "לבחירת עיר, ";
-        filteredCities.slice(0, 5).forEach((city, index) => {
+        filteredCities.forEach((city, index) => {
             message += `ל${city} הקש ${index + 1}, `;
         });
 
@@ -69,7 +64,7 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
-            body: "read=t-חלה שגיאה במערכת"
+            body: "read=t-שגיאה במעבד הנתונים"
         };
     }
 };
