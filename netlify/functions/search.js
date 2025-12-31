@@ -1,15 +1,19 @@
-const querystring = require('querystring');
-
 exports.handler = async (event) => {
     try {
-        let params = event.queryStringParameters || {};
+        // חילוץ נתונים בצורה בטוחה ללא ספריות חיצוניות
+        let cityKey = "";
+        
         if (event.body) {
-            const bodyParams = querystring.parse(event.body);
-            params = { ...params, ...bodyParams };
+            // פענוח POST body
+            const bodyParams = new URLSearchParams(event.body);
+            cityKey = bodyParams.get('city_key') || "";
+        } else if (event.queryStringParameters) {
+            // פענוח GET
+            cityKey = event.queryStringParameters.city_key || "";
         }
 
-        let cityKey = params.city_key || "";
-        const digit = cityKey.toString().replace(/\D/g, '').charAt(0); 
+        // ניקוי הספרה (השארת מספרים בלבד)
+        const digit = cityKey.toString().replace(/\D/g, '').charAt(0);
 
         const keyMap = {
             '2': ['א', 'ב', 'ג'],
@@ -22,7 +26,6 @@ exports.handler = async (event) => {
             '9': ['ש', 'ת']
         };
 
-        // רשימת ערים מורחבת כדי שכל מקש ימצא משהו
         const cities = [
             "אלעד", "אשדוד", "בני ברק", "ביתר עילית", "בית שמש", 
             "דימונה", "הדר גנים", "חריש", "חיפה", "טבריה", 
@@ -30,11 +33,12 @@ exports.handler = async (event) => {
             "סביון", "עמנואל", "צפת", "קרית גת", "רכסים", "תל אביב"
         ];
 
+        // אם אין מקש או מקש לא תקין - נבקש שוב
         if (!digit || !keyMap[digit]) {
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: "read=t-המקש לא תקין נא נסה שנית=city_key,no,1,1,7,Digits"
+                body: "read=t-נא הקש שוב את המקש המבוקש=city_key,no,1,1,7,Digits"
             };
         }
 
@@ -51,13 +55,12 @@ exports.handler = async (event) => {
             };
         }
 
-        // בניית רשימה נקייה ללא תווים מיוחדים
         let cityList = "";
         filteredCities.slice(0, 5).forEach((city, index) => {
-            cityList += `ל${city} הקש ${index + 1} `; // הורדתי פסיקים כדי למנוע בעיות ב-read
+            cityList += `ל${city} הקש ${index + 1} `;
         });
 
-        // חשוב מאוד: החלק של ה-read חייב להיות רציף
+        // יצירת התגובה בפורמט read פשוט ורציף
         const responseText = `read=t-לבחירת עיר ${cityList}=selected_city,no,1,1,7,Digits`;
 
         return {
@@ -67,10 +70,11 @@ exports.handler = async (event) => {
         };
 
     } catch (error) {
+        // במקרה של שגיאה, נחזיר תגובה תקינה כדי שהמערכת לא תנתק
         return {
             statusCode: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
-            body: "read=t-שגיאה בשרת נסה שוב=city_key,no,1,1,7,Digits"
+            body: "read=t-חלה שגיאה בשרת=city_key,no,1,1,7,Digits"
         };
     }
 };
