@@ -2,9 +2,8 @@ exports.handler = async (event) => {
     try {
         let cityKey = "";
 
-        // פירוק ידני לגמרי של ה-Body כדי למנוע קריסות
         if (event.body) {
-            const bodyStr = event.body; // נראה בערך ככה: city_key=2&ApiCallId=...
+            const bodyStr = event.body;
             const pairs = bodyStr.split('&');
             for (let pair of pairs) {
                 const [key, value] = pair.split('=');
@@ -15,30 +14,33 @@ exports.handler = async (event) => {
             }
         }
 
-        // ניקוי: לוקח רק את הספרה הראשונה
         const digit = cityKey.replace(/\D/g, '').charAt(0);
 
-        // אם המשתמש הקיש 2 (או כל מקש אחר שתבחר)
+        // אם זוהה מקש, נחזיר פקודת read פשוטה מאוד
         if (digit) {
+            const textToSay = `הקשת את המקש ${digit} התקשורת עובדת`;
+            // מבנה: read=t-[טקסט]=[שם פרמטר],[האם להגיד מספר],1,1,1,Digits
+            const response = `read=t-${textToSay}=selected_city,no,1,1,1,Digits`;
+
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "text/plain; charset=utf-8" },
-                body: `read=t-הקשת את המקש ${digit}. התקשורת עובדת בהצלחה=selected_city,no,1,1,1,Digits`
+                body: response
             };
         }
 
-        // מקרה שלא הוקש כלום או שגיאה בזיהוי
+        // אם לא זוהה מקש
         return {
             statusCode: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
-            body: "read=t-לא זוהתה הקשה. נא הקש שוב=city_key,no,1,1,1,Digits"
+            body: "read=t-נא להקיש שוב=city_key,no,1,1,1,Digits"
         };
 
     } catch (error) {
         return {
             statusCode: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
-            body: "read=t-חלה שגיאה פנימית=city_key,no,1,1,1,Digits"
+            body: "read=t-תקלה בשרת=city_key,no,1,1,1,Digits"
         };
     }
 };
