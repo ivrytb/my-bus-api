@@ -1,16 +1,30 @@
 exports.handler = async (event) => {
     try {
-        let cityKey = "";
+        let params = {};
         if (event.body) {
             const bodyStr = event.body;
             const pairs = bodyStr.split('&');
             for (let pair of pairs) {
                 const [key, value] = pair.split('=');
-                if (key === 'city_key') { cityKey = decodeURIComponent(value || ""); break; }
+                params[key] = decodeURIComponent(value || "");
             }
         }
 
+        // 1. בדיקה האם הגענו משלב בחירת העיר הספציפית
+        if (params.city_selection) {
+            const selectedIndex = params.city_selection; // למשל '1' או '2'
+            // כאן בהמשך נשמור את העיר שנבחרה ונציג קווים. כרגע נחזיר הודעת אישור:
+            return {
+                statusCode: 200,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+                body: `id_list_message=t-בחרת את עיר מספר ${selectedIndex} בהצלחה&go_to_folder=/1`
+            };
+        }
+
+        // 2. לוגיקת בחירת האות (הקוד הקיים שלך)
+        const cityKey = params.city_key || "";
         const digit = cityKey.replace(/\D/g, '').charAt(0);
+        
         const keyMap = {
             '2': ['א', 'ב', 'ג'], '3': ['ד', 'ה', 'ו'], '4': ['ז', 'ח', 'ט'],
             '5': ['י', 'כ', 'ל'], '6': ['מ', 'נ'], '7': ['ס', 'ע', 'פ'],
@@ -29,15 +43,11 @@ exports.handler = async (event) => {
                     cityList += `ל${city} הקש ${index + 1} `;
                 });
 
-                // כאן התיקון: 
-                // הוספנו 7 שניות המתנה (הספרה 7 לפני ה-Digits)
-                // שינינו את שם הפרמטר ל-city_selection
-                const response = `read=t-לבחירת עיר ${cityList}=city_selection,no,1,1,7,Digits`;
-
+                // אנחנו שולחים את המשתמש לשלב הבא עם הפרמטר city_selection
                 return {
                     statusCode: 200,
                     headers: { "Content-Type": "text/plain; charset=utf-8" },
-                    body: response
+                    body: `read=t-לבחירת עיר ${cityList}=city_selection,no,1,1,7,Digits`
                 };
             }
         }
